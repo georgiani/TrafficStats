@@ -10,6 +10,7 @@ import numpy as np
 import gradio as gr
 os.environ["PAFY_BACKEND"] = "yt-dlp"
 
+# Drawing bounding boxes over the picture. Unused probably
 def draw_bounding_box(img, xmin, ymin, xmax, ymax):
     xmin = round(xmin)
     ymin = round(ymin)
@@ -28,16 +29,22 @@ def get_stream_capture(url):
     cap = cv2.VideoCapture(best.url)
     return cap
 
+# "best.pt" is needed in order to run this app
 def get_model():
     return YOLO("best.pt")
 
+# Unirii Intersection
 VIDEO_URL = "https://www.youtube.com/watch?v=rs2be3mqryo"
+
+# Try to change this
 FRAME_SKIP = 30
+
 model = get_model()
 cap = get_stream_capture(VIDEO_URL)
 
 count_cars = gr.State(0)
 
+# Get the next frame on "every"
 def next_frame():
     success, frame = cap.read()
 
@@ -46,6 +53,8 @@ def next_frame():
 
     if success:
         full_frame = cv2.resize(frame, (w, h), interpolation=cv2.INTER_AREA)
+
+        # TODO: generalize the cropping
         quarter_frame = full_frame[250:650, 650:1200]
 
         image_center = tuple(np.array(quarter_frame.shape[1::-1]) / 2)
@@ -54,6 +63,10 @@ def next_frame():
 
         half_rotated_frame = rotated_frame[170:310,:400] 
 
+        # Conf and Iou values that I found to be
+        # the better.
+        # TODO: Add a slider to modify the Conf and Iou at
+        #   runtime. Check gradio Slider
         results = model.track(
             half_rotated_frame,
             persist=True,
@@ -67,29 +80,17 @@ def next_frame():
             save=True
         )
 
-        # # Visualize the results on the frame
-        # for p in results[0]:
-        #     boxes = p.boxes.xyxy[0]
-        #     x1 = boxes[0].item()
-        #     x2 = boxes[2].item()
-        #     y1 = boxes[1].item()
-        #     y2 = boxes[3].item()
-        #     draw_bounding_box(frame, x1, y1, x2, y2)
-
-        # cv2.namedWindow("tracking",cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow("tracking", 1280, 720)
-        # cv2.imshow("tracking", frame)
+        # Skip frames since not every frame is needed and predicting
+        #   on every frame would slow things down
         for _ in range(FRAME_SKIP):
             _, _ = cap.read()
         
-        # count_cars.value = len(results[0])
+        # Saving the prediction since "save=True" and then
+        #   substituting the image in the UI with the newly saved one.
+        #   Also saving the number of cars in order to update it in the UI
         yield [results[0].save_dir + "\\" + results[0].path, len(results[0])]
     else:
         yield None
-
-
-def destroy():
-    pass
 
 with gr.Blocks() as demo:
     ended = False
@@ -105,6 +106,12 @@ with gr.Blocks() as demo:
 
     car_count = gr.Label()
 
+    # Refresh the image and predictions very 0.5 seconds
+    #   Supposing video is 60 fps, then showing and skipping 30 frames every half a second
+    #   would not delay the show, but this is not taking into account
+    #   the time to predict and that every 0.5 I'm showing one frame and skipping 30, so 31 frames advance
+    # I need to find a way to show the real time. Maybe by cropping the time in
+    #   the bottom left corner and using it in the code
     demo.load(next_frame, None, [frame, car_count], show_progress=True, every=0.5)
 
 if __name__ == "__main__":
