@@ -1,21 +1,16 @@
 import time
 import state_init
-from state_init import cap, bb, lbl, tracker, model, W, H, WHITE, GREEN
+from state_init import cap, bb, lbl, tracker, model, W, H, VIDEOS
 import supervision as sv
 import streamlit as st
+import pandas as pd
 import numpy as np
 import json
 import cv2
 
-# ----------
-from sahi import AutoDetectionModel
-from sahi.predict import get_sliced_prediction
-# ----------
-
 TS_DELTA = 4
 SELECTION_W = int(W / 3)
 SELECTION_H = int(H / 2)
-ZONE1 = np.array([[590, 205], [690, 140], [360, 20], [250, 70]])
 
 def save_step_to_json_file(filename, step, data):
     with open(filename, "r") as res_file_read:
@@ -43,7 +38,7 @@ def process_results(results, frame, flags = None):
     ts = time.time()
     detections = results
     
-    polygon_zone = sv.PolygonZone(ZONE1)
+    polygon_zone = sv.PolygonZone(VIDEOS[st.session_state["location"]]["zone"])
     detections = detections[polygon_zone.trigger(detections)]
     detections = tracker.update_with_detections(detections=detections)
 
@@ -53,7 +48,7 @@ def process_results(results, frame, flags = None):
 
     frame = bb.annotate(scene=frame, detections=detections)
     frame = lbl.annotate(scene=frame, detections=detections, labels=labels)
-    frame = sv.draw_polygon(frame, ZONE1, color=sv.Color.RED, thickness=1)
+    frame = sv.draw_polygon(frame, VIDEOS[st.session_state["location"]]["zone"], color=sv.Color.RED, thickness=1)
 
     ids = [int(i) for i in detections.tracker_id]
     if len(ids) == 0:
@@ -67,7 +62,7 @@ def process_results(results, frame, flags = None):
         return stats, frame
 
     stats = {
-        'ids': ids,
+        'ids': [] if len(ids) == 0 else ids,
         'ts': ts
     }
 
@@ -84,147 +79,61 @@ def callback(image_slice: np.ndarray) -> sv.Detections:
 def next_frame():
     full_frame = cap.read()
 
-
     if full_frame is None:
         return None
 
-    x_begin = st.session_state["xb"]
-    x_end = st.session_state["xe"]
-    y_begin = st.session_state["yb"]
-    y_end = st.session_state["ye"]
-
-    frame = full_frame[y_begin:y_end, x_begin:x_end]
-
     full_frame = full_frame[SELECTION_H:H, SELECTION_W:W]
+    # (540, 1280)
 
-    image_center = tuple(np.array(frame.shape[1::-1]) / 2)
-    rot_mat = cv2.getRotationMatrix2D(image_center, st.session_state["rotation"], 1.0)
-    frame = cv2.warpAffine(frame, rot_mat, frame.shape[1::-1], flags=cv2.INTER_LINEAR)
-    
-    # Proportions for the one street that goes only straight
-    going_straight_frame = frame[int((y_end - y_begin) / 3):int(0.6 * (y_end - y_begin)),:-60] 
-    
     results = None
-    editing_mode = st.session_state['edit_cb']
-    if not editing_mode:
-        slicer = sv.InferenceSlicer(callback=callback)
-        results = slicer(image=full_frame)
-        # results = model.predict(full_frame)
+    playing_mode = st.session_state['playing']
+    if playing_mode:
+        slicer = sv.InferenceSlicer(callback=callback, overlap_ratio_wh=None, overlap_wh=(100, 100), iou_threshold=0.4)
+        results = slicer(image=full_frame)  
         st.session_state['stats'], full_frame = process_results(results, full_frame)
 
     return full_frame
 
 #---------------------------------------------------
 
-if 'w' not in st.session_state:
-    st.session_state['w'] = 640
+def play():
+    st.session_state['playing'] = not st.session_state['playing']
 
-if 'h' not in st.session_state:
-    st.session_state['h'] = 320
-    
-if 'stats' not in st.session_state:
-    st.session_state['stats'] = {
-        'number_of_cars': 0
-    }
-
-if 'step' not in st.session_state:
-    st.session_state['step'] = 0
-
-if 'rotation' not in st.session_state:
-    st.session_state['rotation'] = 20
-
-if 'xb' not in st.session_state:
-    st.session_state["xb"] = 600
-
-if 'xe' not in st.session_state:
-    st.session_state["xe"] = 1150
-
-if 'yb' not in st.session_state:
-    st.session_state["yb"] = 250
-
-if 'ye' not in st.session_state:
-    st.session_state["ye"] = 700
-
-st.set_page_config(layout="wide")
 with st.container():
-    controls, vis = st.columns(2, vertical_alignment="center", gap="small")
+    edit_col, save_col = st.columns(2, vertical_alignment="center", gap="small")
+    with edit_col:
+        st.button("⏸️" if st.session_state['playing'] else "▶️", on_click=play, type="secondary", icon=None)
+    with save_col:
+        save_stats = st.checkbox("💾", key="save_stats_cb")
+    # stats = st.empty()
 
-    with controls:
-        left, left_center, center, right_center, right = st.columns([0.3, 0.1, 0.1, 0.1, 0.3], vertical_alignment="top", gap="small")
+    visualization = st.empty()
 
-        with left_center:
-            left_bt = st.button("⬅️", "left_bt")
-            left_bt_minus = st.button("↩️", "undo_left")
-            rot_bt_left = st.button("🔄️", "rot_bt_left")
-            
-        with center:
-            up_bt = st.button("⬆️", "up_bt")
-            up_bt_minus = st.button("↩️", "undo_up")
-            down_bt_minus = st.button("↩️", "undo_down")
-            down_bt = st.button("⬇️", "down_bt")
-
-        with right_center:
-            right_bt = st.button("➡️", "right_bt")
-            right_bt_minus = st.button("↩️", "undo_right")
-            rot_bt_right = st.button("🔃", "rot_bt_right")
-
-        if left_bt:
-            st.session_state["xb"] -= 40
-        
-        if left_bt_minus:
-            st.session_state["xb"] += 40
-
-        if right_bt:
-            st.session_state["xe"] += 40
-        
-        if right_bt_minus:
-            st.session_state["xe"] -= 40
-
-        if up_bt:
-            st.session_state["yb"] -= 40
-
-        if up_bt_minus:
-            st.session_state["yb"] += 40
-
-        if down_bt:
-            st.session_state["ye"] += 40
-
-        if down_bt_minus:
-            st.session_state["ye"] -= 40
-
-        if rot_bt_left:
-            st.session_state["rotation"] += 10
-        
-        if rot_bt_right:
-            st.session_state["rotation"] -= 10
-
-        edit_cb   = st.checkbox("Editing Mode", True, key="edit_cb")
-        number_of_cars = st.empty()
+    total_col, time_step_col, cars_col = st.columns(3, vertical_alignment="top", gap="small")
+    with total_col:
+        total = st.empty()
+    with time_step_col:
         time_step = st.empty()
-        save_stats = st.checkbox("Save Statistics", key="save_stats_cb")
-        
-    with vis:
-        visualization = st.empty()
+    with cars_col:
+        cars = st.empty()
 
-        if st.session_state["edit_cb"]:
+    if not st.session_state["playing"]:
+        frame_results = next_frame()
+        if frame_results is not None:
+            with visualization:
+                st.image(frame_results)
+    else:
+        while True:
             frame_results = next_frame()
             if frame_results is not None:
                 with visualization:
-                    st.image(frame_results)
-                
-                number_of_cars.write("Editing")
-        else:
-            while True:
-                frame_results = next_frame()
-                
-                if frame_results is not None:
-                    with visualization:
-                        st.image(frame_results, use_column_width="always")
-                    
-                    number_of_cars.write(st.session_state["stats"])
-                        
-                    time_step.write(st.session_state['step'])
+                    st.image(frame_results, use_column_width="always")
 
-                    st.session_state['step'] += 1
+                df_total = pd.DataFrame({"Total": [len(st.session_state["stats"]["ids"])]})
+                total.write(df_total)
+                cars.write(pd.DataFrame({"Cars": st.session_state["stats"]["ids"]}))                        
+                time_step.write(pd.DataFrame({"Step": [st.session_state['step']]}))
 
-                    time.sleep(2.5)
+                st.session_state['step'] += 1
+
+                time.sleep(0.5)

@@ -1,11 +1,10 @@
 import cv2, queue, threading
-import time
 
 class NoBufferVC:
 
   def __init__(self, name):
     self.cap = cv2.VideoCapture(name)
-    self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+    self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     self.q = queue.Queue()
     t = threading.Thread(target=self._reader)
     t.daemon = True
@@ -24,10 +23,5 @@ class NoBufferVC:
           pass
       self.q.put(frame)
 
-      time.sleep(1/(2 * self.fps))
-
   def read(self):
     return self.q.get()
-  
-  def get(self, property):
-    return self.cap.get(property)
