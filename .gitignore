@@ -2,3 +2,9 @@ training_for_cars
 runs
 gradio_old
 images
+*.pt
+*.jpg
+*.png
+__pycache__
+**/date/**
+**/date_fixed/**
