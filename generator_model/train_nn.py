@@ -9,6 +9,30 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score
+import torch.nn as nn
+import torch
+from torch import optim
+import torch.nn.functional as F
+
+class FeedforwardNNModel(nn.Module):
+    def __init__(self, idim, hdim, odim):
+        super().__init__()
+        torch.manual_seed(0)
+        self.net = nn.Sequential(
+            nn.Linear(idim, hdim, dtype=torch.float32), 
+            nn.ReLU(),
+            nn.Linear(hdim, hdim, dtype=torch.float32),
+            nn.ReLU(),
+            nn.Linear(hdim, odim, dtype=torch.float32), 
+            nn.Softmax()
+        )  
+
+    def forward(self, x):
+        return self.net(x)
+
+    def predict(self, x):
+        Y_pred = self.forward(x)
+        return Y_pred
 
 class TrafficDataPoint:
     def __init__(self, ts, ids, added_car):
@@ -95,11 +119,13 @@ def read_data_from_files():
 
     return full_data, intervals
 
-def prepare_data(data, intervals, case):
+def prepare_data(data, intervals):
     features = []
     labels = []
 
     # Data we have
+    cars_added_count = 0
+    added_count = 0
     for i in data:
         # Feature 1: Day
         day = i.ts.day_of_week
@@ -120,36 +146,39 @@ def prepare_data(data, intervals, case):
         features.append([day, is_night, is_morning, is_day, is_evening, num_cars])
         labels.append(i.added)
 
+        if i.added:
+            cars_added_count += 1
+
+        if covered_time_points[i.ts.day_of_week][i.ts.hour][i.ts.minute][i.ts.second] == False:
+            added_count += 1 
+
         covered_time_points[i.ts.day_of_week][i.ts.hour][i.ts.minute][i.ts.second] = True
     
+    print("Instances of added vs not ", cars_added_count, len(data) - cars_added_count)
+    print("Really added time points ", added_count)
 
     # Cover everything related to intervals, in order to not add 0 at random in between correct data
+    coverage_added = 0
+    for i in intervals:
+        min_range = pd.to_datetime(i[0], unit="s")
+        max_range = pd.to_datetime(i[1], unit="s")
 
-    if case != "C1":
-        for i in intervals:
-            min_range = pd.to_datetime(i[0], unit="s")
-            max_range = pd.to_datetime(i[1], unit="s")
+        for t in pd.date_range(min_range, max_range, freq="1s"):
 
-            for t in pd.date_range(min_range, max_range, freq="1s"):
-                covered_time_points[t.day_of_week][t.hour][t.minute][t.second] = True
+            if covered_time_points[t.day_of_week][t.hour][t.minute][t.second] == False:
+                coverage_added += 1
+            covered_time_points[t.day_of_week][t.hour][t.minute][t.second] = True
 
-    step = 1
-    if case == "C1" or case == "C2":
-        step = 1
-    elif case == "C3":
-        step = 15
-    elif case == "C4":
-        step = 20
-    else:
-        step = 30
 
-    print(step)
-
+    print("Coverage added ", coverage_added)
+    # Data for the missing parts
+    true_count = 0
+    false_count = 0
     for d in range(0, 7):
         for h in range(0, 24):
             for m in range(0, 60):
                 for s in range(0, 60):
-                    if s % step == 0:
+                    if s % 15 == 0:
                         if covered_time_points[d][h][m][s] == False:
                             is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
                             is_morning = 1 if 5 <= h < 10 else 0 # between 5 and 10
@@ -161,51 +190,55 @@ def prepare_data(data, intervals, case):
                             labels.append(False)
                             covered_time_points[d][h][m][s] = True
 
+                            false_count += 1
 
+    print(false_count)
+    print(true_count)
+    print(len([a for a in labels if a == True]))
+    print(len([a for a in labels if a == False]))
     return np.array(features), np.array(labels)
 
-# Step 3: Train the model
-def train_model(features, labels):
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=0)
 
-    # Logistic Regression
-    logistic_regression = LogisticRegression()
-    logistic_regression.fit(X_train, y_train)
+def fit(x, y, model, opt, loss_fn, epochs = 1000):
+  
+  for _ in range(epochs):
+    loss = loss_fn(model(x), y)
+    loss.backward()
+    opt.step()
+    opt.zero_grad()
+    
+  return loss.item()
 
+def train_nn_model(features, labels):
 
-    # Decision Tree
-    decision_tree = DecisionTreeClassifier()
-    decision_tree.fit(X_train, y_train)
+    X_train, X_test, y_train, y_test = map(torch.tensor, train_test_split(features, labels, test_size=0.2))
+    device = torch.device("cuda")
 
-    # Random Forest Classifier
-    random_forest = RandomForestClassifier(max_depth=5, random_state=0)
-    random_forest.fit(X_train, y_train)
+    print(X_train)
 
+    X_train = X_train.float()
+    y_train = y_train.long()
 
-    y_pred_lr = logistic_regression.predict(X_test)
-    y_pred_dt = decision_tree.predict(X_test)
-    y_pred_rf = random_forest.predict(X_test)
-    print("Logistic Regression Accuracy:", accuracy_score(y_test, y_pred_lr))
-    print("Decision Tree Accuracy:", accuracy_score(y_test, y_pred_dt))
-    print("Random Forest Accuracy:", accuracy_score(y_test, y_pred_rf))
-    print("Logistic Regression Precision:", precision_score(y_test, y_pred_lr))
-    print("Decision Tree Precision:", precision_score(y_test, y_pred_dt))
-    print("Random Forest Precision:", precision_score(y_test, y_pred_rf))
+    print(y_train)
 
-    with open("c5lr.pkl", "wb") as f:
-        dump(logistic_regression, f, protocol=5)
-    with open("c5dt.pkl", "wb") as f:
-        dump(decision_tree, f, protocol=5)
-    with open("c5rf.pkl", "wb") as f:
-        dump(random_forest, f, protocol=5)
+    X_train=X_train.to(device)
+    y_train=y_train.to(device)
+    fn = FeedforwardNNModel(6, 12, 2)
+    fn.to(device)
+
+    loss_fn = F.cross_entropy
+    opt = optim.SGD(fn.parameters(), lr=0.5)
+
+    print('Final loss', fit(X_train, y_train, fn, opt, loss_fn, epochs=10))
+
+    X_test = X_test.float()
+    X_test = X_test.to(device)
+    y_test = y_test.long()
+    y_test = y_test.to(device)
+    print(loss_fn(fn(X_test), y_test).item())
 
 # Step 4: Main execution
 if __name__ == "__main__":
     one_week_data, intervals = read_data_from_files()
-
-    for case in [f"C{c}" for c in range(1, 6)]:
-        print(f"Case {case}")
-        features, labels = prepare_data(one_week_data, intervals, case)
-        train_model(features, labels)
-        print()
+    features, labels = prepare_data(one_week_data, intervals)
+    train_nn_model(features, labels)

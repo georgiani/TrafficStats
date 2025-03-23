@@ -8,6 +8,8 @@ def is_first_element(el, lst):
 
 if __name__ == "__main__":
     files = [
+        "res_monday_0",
+        "res_monday_1",
         "res_tuesday_1", 
         "res_tuesday_2", 
         "res_wed_0", 
