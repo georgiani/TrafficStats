@@ -237,6 +237,8 @@ def train_nn_model(features, labels):
     y_test = y_test.to(device)
     print(loss_fn(fn(X_test), y_test).item())
 
+    torch.save(fn.state_dict(), "./models/NN/model")
+
 # Step 4: Main execution
 if __name__ == "__main__":
     one_week_data, intervals = read_data_from_files()
