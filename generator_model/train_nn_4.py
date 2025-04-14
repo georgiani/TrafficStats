@@ -89,13 +89,13 @@ def fit(train_loader, model, opt, loss_fn, epochs = 1000, wandb = None):
   return loss.item()
 
 def train_nn_model(features, labels):
-    lr = 0.05
+    lr = 0.001
     epochs = 10
 
 
     wandb.init(
         project="TrafficStats",
-        name="FFNN Traffic Generation 8April Second",
+        name="FFNN Traffic Generation 9April Fourth",
         config={                      
             "learning_rate": lr,
             "epochs": epochs,
@@ -122,7 +122,7 @@ def train_nn_model(features, labels):
     last_loss = fit(train_dataloader, fn, opt, loss_fn, epochs=epochs, wandb=wandb)
     print("Last loss: ", last_loss)
 
-    torch.save(fn.state_dict(), "./models/NN/model_C5_8_aprilie_2")
+    torch.save(fn.state_dict(), "./models/NN/model_C5_9_aprilie_4")
     
     X_test = X_test.float()
     X_test = X_test.to(device)

@@ -1,4 +1,6 @@
 import json
+import pickle
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from pickle import dump
@@ -204,8 +206,22 @@ def train_model(features, labels):
 if __name__ == "__main__":
     one_week_data, intervals = read_data_from_files()
 
+    
     for case in [f"C{c}" for c in range(1, 6)]:
         print(f"Case {case}")
-        features, labels = prepare_data(one_week_data, intervals, case)
+        features, labels = prepare_data(one_week_data, intervals, "C5")
+
+        ds_to_save = []
+        print(len(features))
+        for i in range(len(features)):
+            if labels[i] == True:
+                ds_to_save.append(np.append(features[i], 1))
+            else:
+                ds_to_save.append(np.append(features[i], 0))
+
+        with open('C5_final_traffic_dataset.pkl', 'wb') as f:
+            pickle.dump(ds_to_save, f) 
+
         train_model(features, labels)
         print()
+        break
