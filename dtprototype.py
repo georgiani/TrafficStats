@@ -95,13 +95,16 @@ def next_frame():
 
 #---------------------------------------------------
 
-def forecast(forecast_visualization):
+def forecast():
+    plt.clf()
     fn = FeedforwardNNModel(6, 12, 1)
-    fn.load_state_dict(torch.load("./generator_model/models/NN/model_C5_10_aprilie_6", weights_only=True))
+    fn.load_state_dict(torch.load("./generator_model/models/NN/model_C5_9_aprilie_3", weights_only=True))
     fn.eval()
 
     ts_now = pd.Timestamp.now()
-    cars_now = st.session_state['stats']['ids']
+    cars_now = []
+    if st.session_state["stats"]["ids"]:
+        cars_now = st.session_state['stats']['ids']
     forecast_period = st.session_state.period
     num_cars = len(cars_now)
     
@@ -147,8 +150,7 @@ def forecast(forecast_visualization):
 
     fig, ax = plt.subplots()
     sns.lineplot(data=df, x="ts", y="traffic", ax=ax)
-    forecast_visualization.write(fig)
-    st.pyplot(fig)
+    plt.figure(fig)
 
 def play():
     st.session_state['playing'] = not st.session_state['playing']
@@ -172,8 +174,8 @@ with st.container():
         st.number_input("Traffic Light Red Period", 0, 240, 30, 1, key="red")
         st.number_input("Traffic Light Green Period", 0, 240, 30, 1, key="green")
         st.number_input("Forecast Period", 1, 10, 3, 1, key="period")
-        forecast_visualization = st.empty()
-        st.button("Forecast With Set Values", on_click=forecast, type="secondary", icon=None, args=(forecast_visualization,))
+        forecast_visualization = st.pyplot(plt.gcf())
+        st.button("Forecast With Set Values", on_click=forecast, type="secondary", icon=None)
 
     if not st.session_state["playing"]:
         frame_results = next_frame()

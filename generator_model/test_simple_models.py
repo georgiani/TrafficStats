@@ -1,5 +1,5 @@
 import pandas as pd
-from pickle import load
+from pickle import dump, load
 from train_nn import FeedforwardNNModel
 import torch
 import numpy as np
@@ -34,15 +34,15 @@ import torch.nn as nn
 #             cars.append(max(cars) + 1)
 
 if __name__ == "__main__":
-    with open("c5lr.pkl", "rb") as f:
+    START_DATE='2025-03-23 00:00:00'
+    END_DATE='2025-03-29 23:59:00'
+
+    with open("models/C530/c5lr.pkl", "rb") as f:
         logistic_regression = load(f)
     
     # Decision Tree
-    with open("c5dt.pkl", "rb") as f:
+    with open("models/C530/c5dt.pkl", "rb") as f:
         decision_tree = load(f)
-    # Random Forest Classifier
-    with open("c5rf.pkl", "rb") as f:
-        random_forest = load(f)
 
     traffic = [[] for _ in range(24)]
     week_traffic = [[[] for _ in range(24)] for _ in range(7)]
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     max_num_cars = -1
     num_cars = 1
     cnt = 0
-    for t in pd.date_range(pd.Timestamp('2025-03-23 00:00:00'), pd.Timestamp('2025-03-29 23:59:00'), freq="3s"):
+    for t in pd.date_range(pd.Timestamp(START_DATE), pd.Timestamp(END_DATE), freq="3s"):
         d = t.day_of_week
         h = t.hour
         is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
@@ -100,6 +100,9 @@ if __name__ == "__main__":
     df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
 
+    with open("pickles/lrc5.pkl", "wb") as f:
+        dump(week_df, f)
+
     sns.lineplot(data=week_df, x="ts", y="traffic")
 
     plt.show()
@@ -112,7 +115,7 @@ if __name__ == "__main__":
     max_num_cars = -1
     num_cars = 1
     cnt = 0
-    for t in pd.date_range(pd.Timestamp('2025-03-23 00:00:00'), pd.Timestamp('2025-03-29 23:59:00'), freq="3s"):
+    for t in pd.date_range(pd.Timestamp(START_DATE), pd.Timestamp(END_DATE), freq="3s"):
         d = t.day_of_week
         h = t.hour
         is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
@@ -160,65 +163,69 @@ if __name__ == "__main__":
 
     df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
+    
+    with open("pickles/dtc5.pkl", "wb") as f:
+        dump(week_df, f)
     sns.lineplot(data=week_df, x="ts", y="traffic")
 
     plt.show()
 
-    traffic = [[] for _ in range(24)]
-    week_traffic = [[[] for _ in range(24)] for _ in range(7)]
+    # RANDOM FOREST (very slow)
+    # traffic = [[] for _ in range(24)]
+    # week_traffic = [[[] for _ in range(24)] for _ in range(7)]
 
-    prob_array = []
-    max_num_cars = -1
-    num_cars = 1
-    cnt = 0
-    for t in pd.date_range(pd.Timestamp('2025-03-25 00:00:00'), pd.Timestamp('2025-03-25 23:59:00'), freq="3s"):
-        d = t.day_of_week
-        h = t.hour
-        is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
-        is_morning = 1 if 5 <= h < 10 else 0 # between 5 and 10
-        is_day = 1 if 10 <= h < 18 else 0 # between 10 and 18
-        is_evening = 1 if 18 <= h < 21 else 0 # between 18 and 21
+    # prob_array = []
+    # max_num_cars = -1
+    # num_cars = 1
+    # cnt = 0
+    # for t in pd.date_range(pd.Timestamp(START_DATE), pd.Timestamp(END_DATE), freq="3s"):
+    #     d = t.day_of_week
+    #     h = t.hour
+    #     is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
+    #     is_morning = 1 if 5 <= h < 10 else 0 # between 5 and 10
+    #     is_day = 1 if 10 <= h < 18 else 0 # between 10 and 18
+    #     is_evening = 1 if 18 <= h < 21 else 0 # between 18 and 21
 
-        rf_prediction = random_forest.predict([[d, is_night, is_morning, is_day, is_evening, num_cars]])
+    #     rf_prediction = random_forest.predict([[d, is_night, is_morning, is_day, is_evening, num_cars]])
 
-        if rf_prediction:
-            num_cars += 1
+    #     if rf_prediction:
+    #         num_cars += 1
 
-        if num_cars > max_num_cars:
-            max_num_cars = num_cars
+    #     if num_cars > max_num_cars:
+    #         max_num_cars = num_cars
         
-        if cnt == 20:
-            if h > 23 or h < 2:
-                num_cars = 0
-            else:
-                num_cars = 1
-            cnt = 0
+    #     if cnt == 20:
+    #         if h > 23 or h < 2:
+    #             num_cars = 0
+    #         else:
+    #             num_cars = 1
+    #         cnt = 0
 
-        cnt += 1
+    #     cnt += 1
         
-        traffic[h].append(num_cars)
-        week_traffic[d][h].append(num_cars)
+    #     traffic[h].append(num_cars)
+    #     week_traffic[d][h].append(num_cars)
 
-    print(max_num_cars)
-    for h in range(24):
-        if len(traffic[h]) > 0:
-            traffic[h] = np.median(traffic[h])
-        else:
-            traffic[h] = 0
+    # print(max_num_cars)
+    # for h in range(24):
+    #     if len(traffic[h]) > 0:
+    #         traffic[h] = np.median(traffic[h])
+    #     else:
+    #         traffic[h] = 0
 
-        for d in range(7):
-            if len(week_traffic[d][h]) > 0:
-                week_traffic[d][h] = (np.median(week_traffic[d][h]), d >= 5)
-            else:
-                week_traffic[d][h] = (0, d >= 5)
+    #     for d in range(7):
+    #         if len(week_traffic[d][h]) > 0:
+    #             week_traffic[d][h] = (np.median(week_traffic[d][h]), d >= 5)
+    #         else:
+    #             week_traffic[d][h] = (0, d >= 5)
 
-    week_traffic_array = []
-    for d in range(7):
-        for h in range(24):
-            week_traffic_array.append(week_traffic[d][h])
+    # week_traffic_array = []
+    # for d in range(7):
+    #     for h in range(24):
+    #         week_traffic_array.append(week_traffic[d][h])
 
-    df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
-    week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
+    # df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
+    # week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
 
-    sns.lineplot(data=week_df, x="ts", y="traffic")
-    plt.show()
+    # sns.lineplot(data=week_df, x="ts", y="traffic")
+    # plt.show()
