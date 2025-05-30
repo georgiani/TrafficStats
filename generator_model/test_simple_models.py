@@ -34,14 +34,14 @@ import torch.nn as nn
 #             cars.append(max(cars) + 1)
 
 if __name__ == "__main__":
-    START_DATE='2025-03-23 00:00:00'
-    END_DATE='2025-03-29 23:59:00'
+    START_DATE='2025-03-24 00:00:00'
+    END_DATE='2025-03-30 23:59:00'
 
-    with open("models/C530/c5lr.pkl", "rb") as f:
+    with open("models/C1/c1lr.pkl", "rb") as f:
         logistic_regression = load(f)
     
     # Decision Tree
-    with open("models/C530/c5dt.pkl", "rb") as f:
+    with open("models/C1/c1dt.pkl", "rb") as f:
         decision_tree = load(f)
 
     traffic = [[] for _ in range(24)]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
 
-    with open("pickles/lrc5.pkl", "wb") as f:
+    with open("pickles/lrc1.pkl", "wb") as f:
         dump(week_df, f)
 
     sns.lineplot(data=week_df, x="ts", y="traffic")
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
     
-    with open("pickles/dtc5.pkl", "wb") as f:
+    with open("pickles/dtc1.pkl", "wb") as f:
         dump(week_df, f)
     sns.lineplot(data=week_df, x="ts", y="traffic")
 

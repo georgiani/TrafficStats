@@ -7,6 +7,7 @@ import random
 import seaborn as sns
 import matplotlib.pyplot as plt
 import torch.nn as nn
+from pickle import dump, load
 
 # if __name__ == "__main__":
 #     with open("./models/C1/c1dt.pkl", "rb") as f:
@@ -94,5 +95,8 @@ if __name__ == "__main__":
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": week_traffic_array})
     # sns.lineplot(data=df, x="ts", y="traffic")
     sns.lineplot(data=week_df, x="ts", y="traffic")
+
+    with open("pickles/ffnn3.pkl", "wb") as f:
+        dump(week_df, f)
 
     plt.show()

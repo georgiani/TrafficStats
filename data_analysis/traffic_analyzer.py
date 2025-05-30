@@ -3,9 +3,12 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
+import seaborn as sns
 figure(figsize=(14, 6), dpi=100)
 
 files = [
+    "res_monday_0",
+    "res_monday_1",
     "res_tuesday_1", 
     "res_tuesday_2", 
     "res_wed_0", 
@@ -55,7 +58,6 @@ if __name__ == "__main__":
                 week_data[t.day_of_week][t.hour][t.minute][t.second][1] += 1
 
     day_of_the_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    color = ["red", "green", "blue", "yellow", "black", "red", "green"]
 
     SETTING = "Hour"
 
@@ -143,19 +145,21 @@ if __name__ == "__main__":
                     number_of_cars += number_of_cars_minute
                     number_of_data_points += number_of_data_points_minute
 
-                if number_of_cars != 0 and number_of_data_points != 0: 
-                    x.append(i)
-                    y.append(number_of_cars / number_of_data_points)
+                # if number_of_cars != 0 and number_of_data_points != 0: 
+                x.append(i)
+                y.append(0 if number_of_data_points == 0 else number_of_cars / number_of_data_points)
 
-                    i += 1
+                i += 1
                 
             
         # Normal plot
         # plt.plot(x, y)
 
         # Bar plot
-        plt.bar(x, y)
-        plt.xticks(ticks, labels)
+        df = pd.DataFrame.from_dict({"times": x, "Average number of cars / hour": y})
+        sns.barplot(df, x="times", y="Average number of cars / hour")
+        plt.xlabel("")
+        plt.xticks(ticks, labels, rotation=45)
 
         for i, t in enumerate(ticks):
             if i + 1 != len(ticks):

@@ -8,6 +8,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import torch.nn as nn
+from pickle import dump, load
 
 # if __name__ == "__main__":
 #     with open("./models/C1/c1dt.pkl", "rb") as f:
@@ -42,7 +43,7 @@ if __name__ == "__main__":
     max_num_cars = -1
     num_cars = 1
     cnt = 0
-    for t in pd.date_range(pd.Timestamp('2025-03-23 00:00:00'), pd.Timestamp('2025-03-30 23:59:00'), freq="3s"):
+    for t in pd.date_range(pd.Timestamp('2025-03-24 00:00:00'), pd.Timestamp('2025-03-30 23:59:00'), freq="3s"):
         d = t.day_of_week
         h = t.hour
         is_night = 1 if 21 <= h or h < 5 else 0 # between 21 and 5
@@ -93,12 +94,10 @@ if __name__ == "__main__":
 
     df = pd.DataFrame.from_dict({"ts": [i for i in range(0, len(traffic))], "traffic": traffic})
     week_df = pd.DataFrame.from_dict({"ts": [i for i in range(len(week_traffic_array))], "traffic": [t[0] for t in week_traffic_array], "weekend": [t[1] for t in week_traffic_array]})
-    
-    x = week_df["ts"]
-    y = week_df["traffic"]
-    x_interp = np.linspace(x.iloc[0], x.iloc[-1], 300)
-    y_interp = interp1d(x, y, kind="quadratic")(x_interp)
-    # sns.lineplot(data=df, x="ts", y="traffic")
-    sns.lineplot(x=x_interp, y=y_interp)
+
+    sns.lineplot(data=week_df, x="ts", y="traffic")
+
+    with open("pickles/ffnn6.pkl", "wb") as f:
+        dump(week_df, f)
 
     plt.show()

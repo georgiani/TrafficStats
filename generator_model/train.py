@@ -181,47 +181,45 @@ def train_model(features, labels):
     decision_tree.fit(X_train, y_train)
 
     # Random Forest Classifier
-    random_forest = RandomForestClassifier(max_depth=5, random_state=0)
-    random_forest.fit(X_train, y_train)
+    # random_forest = RandomForestClassifier(max_depth=5, random_state=0)
+    # random_forest.fit(X_train, y_train)
 
 
     y_pred_lr = logistic_regression.predict(X_test)
     y_pred_dt = decision_tree.predict(X_test)
-    y_pred_rf = random_forest.predict(X_test)
+    # y_pred_rf = random_forest.predict(X_test)
     print("Logistic Regression Accuracy:", accuracy_score(y_test, y_pred_lr))
     print("Decision Tree Accuracy:", accuracy_score(y_test, y_pred_dt))
-    print("Random Forest Accuracy:", accuracy_score(y_test, y_pred_rf))
+    # print("Random Forest Accuracy:", accuracy_score(y_test, y_pred_rf))
     print("Logistic Regression Precision:", precision_score(y_test, y_pred_lr))
     print("Decision Tree Precision:", precision_score(y_test, y_pred_dt))
-    print("Random Forest Precision:", precision_score(y_test, y_pred_rf))
+    # print("Random Forest Precision:", precision_score(y_test, y_pred_rf))
 
-    with open("c5lr.pkl", "wb") as f:
-        dump(logistic_regression, f, protocol=5)
-    with open("c5dt.pkl", "wb") as f:
-        dump(decision_tree, f, protocol=5)
-    with open("c5rf.pkl", "wb") as f:
-        dump(random_forest, f, protocol=5)
+    # with open("c5lr.pkl", "wb") as f:
+    #     dump(logistic_regression, f, protocol=5)
+    # with open("c5dt.pkl", "wb") as f:
+    #     dump(decision_tree, f, protocol=5)
+    # with open("c5rf.pkl", "wb") as f:
+    #     dump(random_forest, f, protocol=5)
 
 # Step 4: Main execution
 if __name__ == "__main__":
     one_week_data, intervals = read_data_from_files()
 
     
-    for case in [f"C{c}" for c in range(1, 6)]:
-        print(f"Case {case}")
-        features, labels = prepare_data(one_week_data, intervals, "C5")
+    # for case in [f"C{c}" for c in range(1, 6)]:
 
-        ds_to_save = []
-        print(len(features))
-        for i in range(len(features)):
-            if labels[i] == True:
-                ds_to_save.append(np.append(features[i], 1))
-            else:
-                ds_to_save.append(np.append(features[i], 0))
+    features, labels = prepare_data(one_week_data, intervals, "C1")
 
-        with open('C5_final_traffic_dataset.pkl', 'wb') as f:
-            pickle.dump(ds_to_save, f) 
+    ds_to_save = []
+    print(len(features))
+    for i in range(len(features)):
+        if labels[i] == True:
+            ds_to_save.append(np.append(features[i], 1))
+        else:
+            ds_to_save.append(np.append(features[i], 0))
 
-        train_model(features, labels)
-        print()
-        break
+    # with open('C5_final_traffic_dataset.pkl', 'wb') as f:
+    #     pickle.dump(ds_to_save, f) 
+
+    train_model(features, labels)
