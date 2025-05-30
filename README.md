@@ -8,4 +8,7 @@ This repository contains all the files used during the experimentation and devel
 - data_collected/ - collected JSON data
 - data_fixing/ - code used to fix some JSON files where detections would disappear for one frame
 - data_analysis/ - code used to visualize the distribution of the collected data
-- 
+- generator_model/ - code used to train and test the simple and FFNN models with the collected data
+- sumo/ - unused visualization tests using SUMO
+- dtprototype.py - Digital Twin Prototype Application. Reuses some of the assets used by the monitoring and collection app
+- gradio_test/ - gradio UI before switching to Streamlit
