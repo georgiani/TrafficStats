@@ -1,6 +1,4 @@
-training_for_cars
 runs
-gradio_old
 images
 *.pt
 *.jpg
@@ -8,4 +6,5 @@ images
 __pycache__
 **/date/**
 **/date_fixed/**
+**/**/wandb
 __pycache__
